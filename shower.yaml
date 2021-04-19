@@ -1,0 +1,164 @@
+
+#*****************************************************************
+automation:
+#*****************************************************************
+  - alias: 'Shower started'
+    mode: single
+    id: 'shower001'
+
+    trigger:
+    - platform: state
+      entity_id: binary_sensor.bathroom_flood_sensor
+      to: "on"
+
+    action:
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.shower_start
+      data:
+        timestamp: "{{ now().timestamp() }}"
+    - service: light.turn_on
+      data:
+        entity_id: light.bathroom
+        color_name: green
+        brightness: 255
+        transition: 5
+    - service: timer.start
+      entity_id: timer.shower_duration_1
+
+
+#*****************************************************************
+  - alias: 'Shower Duration 1 finished'
+    mode: single
+    id: 'shower002'
+
+    trigger:
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.shower_duration_1
+
+    condition:
+    - condition: state
+      entity_id : binary_sensor.bathroom_flood_sensor
+      state: 'on'
+
+    action:
+    - service: light.turn_on
+      data:
+        entity_id: light.bathroom
+        color_name: orange
+        brightness: 255
+        transition: 5
+    - service: timer.start
+      entity_id: timer.shower_duration_2
+
+
+#*****************************************************************
+  - alias: 'Shower Duration 2 finished'
+    mode: single
+    id: 'shower003'
+
+    trigger:
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.shower_duration_2
+
+    condition:
+    - condition: state
+      entity_id : binary_sensor.bathroom_flood_sensor
+      state: 'on'
+
+    action:
+    - service: light.turn_on
+      data:
+        entity_id: light.bathroom
+        color_name: red
+        brightness: 255
+        transition: 5
+    - service: timer.start
+      entity_id: timer.shower_duration_3
+
+
+#*****************************************************************
+  - alias: 'Shower Duration 3 finished'
+    mode: queued
+    id: 'shower004'
+
+    trigger:
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.shower_duration_3
+
+    condition:
+    - condition: state
+      entity_id : binary_sensor.bathroom_flood_sensor
+      state: 'on'
+
+    action:
+    - service: light.turn_on
+      data:
+        entity_id: light.bathroom
+        color_name: red
+        flash: long
+    - service: timer.start
+      entity_id: timer.shower_duration_3
+
+
+#*****************************************************************
+  - alias: 'Shower ended'
+    mode: single
+    id: 'shower005'
+
+    trigger:
+    - platform: state
+      entity_id: binary_sensor.bathroom_flood_sensor
+      to: "off"
+      for:
+        seconds: 5
+
+    action:
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.shower_end
+      data:
+        timestamp: "{{ now().timestamp() }}"
+    - service: timer.cancel
+      entity_id: timer.shower_duration_1
+    - service: timer.cancel
+      entity_id: timer.shower_duration_2
+    - service: timer.cancel
+      entity_id: timer.shower_duration_3
+    - service: light.turn_on
+      data:
+        entity_id: light.bathroom
+        color_name: white
+        brightness: 255
+    - service: sonos.snapshot
+      entity_id: media_player.sonos_bathroom
+    - service: sonos.unjoin
+      entity_id: media_player.sonos_bathroom
+    - service: media_player.volume_set
+      data:
+        entity_id: media_player.sonos_bathroom
+        volume_level: 0.30
+    - service: tts.cloud_say
+      data:
+        entity_id: media_player.sonos_bahtroom
+        message: >
+          {% set duration = state_attr('input_datetime.shower_end','timestamp') | int - state_attr('input_datetime.shower_start','timestamp') | int + 1 %}
+          {% set seconds = duration % 60 %}
+          {% set minutes = (duration / 60) | int % 60 %}
+          Duration of this shower: {% if minutes > 0 %}{{ minutes }}{% if minutes == 1 %} minute{% else %} minutes{% endif %}{% endif %}{% if seconds != 0 %}{% if minutes != 0 %} and {% endif %}{{ seconds }} second{% if seconds != 1%}s{% endif %}{% endif %}.
+    - delay: 
+        seconds: 1
+    - delay: >-
+        {% set duration = state_attr('media_player.sonos_bathroom','media_duration') | int %}
+        {% set seconds = duration % 60 %}
+        {% set minutes = (duration / 60) | int % 60 %}
+        {% set hours = (duration / 3600) | int %}
+        {{ '{:0>2}:{:0>2}:{:0>2}'.format(hours, minutes, seconds) }}
+    - service: sonos.restore
+      entity_id: media_player.sonos_bathroom
