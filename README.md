@@ -19,7 +19,7 @@ The automations for this functionality make use of the following helpers:
 - **timer.shower_duration_2**     (time after which the light in the bathroom will change from orange to red)
   duration: 120 seconds
 - **timer.shower_duration_3**     (time after which the light in the bathroom will change from red to flashing red)
-  duration: 60 seconds
+  duration: 30 seconds
 
 These helpers are all created via Configuration > Helpers
 The duration of the timers can be adapted to better suit your personal requirements.
